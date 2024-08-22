@@ -2,11 +2,41 @@ import { Hono } from "hono";
 import { connectToMongo, User, Animal, TrainingLog } from "./db";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { hashPassword, verifyPassword } from "./password";
+import { HTTPException } from "hono/http-exception";
+import { createSigner, createVerifier } from "fast-jwt";
 
 await connectToMongo();
 
 const app = new Hono();
-app.get("/", (c) => c.text("Hello Bun!!"));
+
+// should be in .env but whatever
+const key = "very-secret-key";
+const signKey = createSigner({ key });
+const verifyKey = createVerifier({ key });
+
+app.use(async (c, next) => {
+  if (c.req.path.startsWith("/api/user")) {
+    return await next();
+  }
+
+  // auth is the header `Authorization: Bearer <token>`
+  const jwt = c.req.header("Authorization")?.split(" ")[1];
+  if (!jwt) {
+    throw new HTTPException(401, {
+      message: "Unauthorized: no Authorization header",
+    });
+  }
+
+  try {
+    const payload = verifyKey(jwt);
+  } catch (e) {
+    throw new HTTPException(401, { message: "Unauthorized: invalid key" });
+  }
+
+  return await next();
+});
+
 app.get("/api/health", (c) => c.json({ healthy: true }));
 
 app.post(
@@ -23,6 +53,11 @@ app.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
+
+    console.log("adding user", data);
+
+    data.password = await hashPassword(data.password);
+
     try {
       const user = new User(data);
       await user.save();
@@ -113,6 +148,59 @@ app.get("/api/admin/training", queryLimitOffset, async (c) => {
   const trainingLogs = await TrainingLog.find().limit(count).skip(offset);
   return c.json(trainingLogs);
 });
+
+app.post(
+  "/api/user/login",
+  zValidator("json", z.object({ email: z.string(), password: z.string() })),
+  async (c) => {
+    const { email, password } = c.req.valid("json");
+    const user = await User.findOne({ email }).exec();
+    if (!user) {
+      throw new HTTPException(401, { message: "User not found" });
+    }
+
+    const isMatch = await verifyPassword({
+      password,
+      hashedPassword: user.password,
+    });
+
+    if (!isMatch) {
+      throw new HTTPException(401, { message: "Invalid password" });
+    }
+
+    return c.json({ message: "Logged in" });
+  },
+);
+
+app.post(
+  "/api/user/verify",
+  zValidator("json", z.object({ email: z.string(), password: z.string() })),
+  async (c) => {
+    const { email, password } = c.req.valid("json");
+    const user = await User.findOne({ email }).exec();
+    if (!user) {
+      throw new HTTPException(401, { message: "User not found" });
+    }
+
+    const isMatch = await verifyPassword({
+      password,
+      hashedPassword: user.password,
+    });
+
+    if (!isMatch) {
+      throw new HTTPException(401, { message: "Invalid password" });
+    }
+
+    const token = signKey({
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      profilePicture: user.profilePicture,
+    });
+
+    return c.text(token);
+  },
+);
 
 console.log("ready");
 

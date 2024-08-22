@@ -75,7 +75,3 @@ const trainingLogs: Array<ReturnType<typeof trainingLog> & { _id: string }> =
       }).then((data) => data.json()),
     ),
   );
-
-console.table(users);
-console.table(animals);
-console.table(trainingLogs);

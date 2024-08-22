@@ -4,6 +4,7 @@
   "type": "module",
   "devDependencies": {
     "@ngneat/falso": "^7.2.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/bun": "latest"
   },
   "peerDependencies": {
@@ -12,6 +13,7 @@
   "dependencies": {
     "@hono/zod-validator": "^0.2.2",
     "bcrypt": "^5.1.1",
+    "fast-jwt": "^4.0.2",
     "hono": "^4.5.8",
     "mongodb": "^6.8.0",
     "mongoose": "^8.5.3",
