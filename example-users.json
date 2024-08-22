@@ -1,0 +1,35 @@
+[
+  {
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "password": "hashed_password_123",
+    "profilePicture": "https://example.com/storage/profiles/johndoe.jpg"
+  },
+  {
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "password": "hashed_password_456",
+    "profilePicture": "https://example.com/storage/profiles/janesmith.png"
+  },
+  {
+    "firstName": "Robert",
+    "lastName": "Johnson",
+    "email": "robert.johnson@example.com",
+    "password": "hashed_password_789"
+  },
+  {
+    "firstName": "Emily",
+    "lastName": "Brown",
+    "email": "emily.brown@example.com",
+    "password": "hashed_password_012",
+    "profilePicture": "https://example.com/storage/profiles/emilybrown.jpg"
+  },
+  {
+    "firstName": "Michael",
+    "lastName": "Wilson",
+    "email": "michael.wilson@example.com",
+    "password": "hashed_password_345"
+  }
+]
