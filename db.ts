@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
+import { Resource } from "sst";
 
 export let db: mongoose.Mongoose = null as any;
 
 export async function connectToMongo() {
-  db = await mongoose.connect(process.env.MONGO_URI!, {});
+  db = await mongoose.connect(Resource.MongoURI.value, {});
 }
 export const { disconnect } = mongoose;
 

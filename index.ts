@@ -5,6 +5,13 @@ import { zValidator } from "@hono/zod-validator";
 import { hashPassword, verifyPassword } from "./password";
 import { HTTPException } from "hono/http-exception";
 import { createSigner, createVerifier } from "fast-jwt";
+import { handle } from "hono/aws-lambda";
+import { Resource } from "sst";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 
 await connectToMongo();
 
@@ -229,6 +236,83 @@ app.post(
   },
 );
 
+const fileUploadValidator = zValidator(
+  "form",
+  z.object({
+    type: z.enum(["user-image", "animal-image", "training-log-video"]),
+    id: z.string(),
+    file: z.instanceof(File),
+  }),
+);
+
+const s3Client = new S3Client({});
+
+// NOTE: this is different than what the design doc wants. you can't easily send a file
+// (without base64 encoding it, which is ugly) without using form-data. you also can't use
+// form-data and body at the same time (or at least, cURL can't). so now, the type and id
+// are in the form instead of in the body in json
+app.post("/api/file/upload", fileUploadValidator, async (c) => {
+  const { type, id, file } = c.req.valid("form");
+
+  const objectKey = crypto.randomUUID();
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const command = new PutObjectCommand({
+    Key: objectKey,
+    Bucket: Resource.Bucket.name,
+    Body: buffer,
+    ContentType: file.type,
+  });
+  const res = await s3Client.send(command);
+
+  // this is inefficient on s3 credits but i dont want to double up on the switch statements so...
+  async function deleteObject() {
+    const command = new DeleteObjectCommand({
+      Key: objectKey,
+      Bucket: Resource.Bucket.name,
+    });
+    await s3Client.send(command);
+  }
+
+  const publicURL = Resource.BucketURL.url + "/" + objectKey;
+
+  if (type === "user-image") {
+    const user = await User.findById(id).exec();
+
+    if (!user) {
+      await deleteObject();
+      throw new HTTPException(404, { message: "User not found" });
+    }
+
+    user.profilePicture = publicURL;
+    await user.save();
+  } else if (type === "animal-image") {
+    const animal = await Animal.findById(id).exec();
+
+    if (!animal) {
+      await deleteObject();
+      throw new HTTPException(404, { message: "Animal not found" });
+    }
+
+    animal.profilePicture = publicURL;
+    await animal.save();
+  } else if (type === "training-log-video") {
+    const trainingLog = await TrainingLog.findById(id).exec();
+
+    if (!trainingLog) {
+      await deleteObject();
+      throw new HTTPException(404, { message: "Training log not found" });
+    }
+
+    trainingLog.trainingLogVideo = publicURL;
+  } else {
+    // to make sure we handle all cases
+    const n: never = type;
+  }
+
+  return c.json({ message: "uploaded", objectKey, publicURL });
+});
+
 console.log("ready");
 
-export default app;
+export const handler = handle(app);
