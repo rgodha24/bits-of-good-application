@@ -11,11 +11,6 @@ declare module "sst" {
       "type": "sst.sst.Linkable"
       "url": string
     }
-    "Hono": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
-    }
     "MongoURI": {
       "type": "sst.sst.Secret"
       "value": string

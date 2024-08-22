@@ -6,10 +6,13 @@ To install dependencies:
 bun install
 ```
 
-To run:
+to start running the app, you need to install [sstv3](https://sst.dev) and set up your aws credentials locally. 
+then, make a db on mongodb atlas. copy the connection URI
 
+run this in the terminal
 ```bash
-bun run index.ts
+sst secret set MongoURI "<YOUR_MONGO_CONNECTION_URI>"
 ```
 
-This project was created using `bun init` in bun v1.1.18. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+finally, run `sst dev`
+it should give you the live url as a .on.aws url.
