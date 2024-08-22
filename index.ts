@@ -8,7 +8,17 @@ import { createSigner, createVerifier } from "fast-jwt";
 
 await connectToMongo();
 
-const app = new Hono();
+type Variables = {
+  user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    profilePicture: string;
+    id: string;
+  };
+};
+
+const app = new Hono<{ Variables: Variables }>();
 
 // should be in .env but whatever
 const key = "very-secret-key";
@@ -30,6 +40,7 @@ app.use(async (c, next) => {
 
   try {
     const payload = verifyKey(jwt);
+    c.set("user", payload as any);
   } catch (e) {
     throw new HTTPException(401, { message: "Unauthorized: invalid key" });
   }
@@ -63,7 +74,9 @@ app.post(
       await user.save();
       return c.json(user);
     } catch (e) {
-      return c.json(e as any);
+      throw new HTTPException(500, {
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
     }
   },
 );
@@ -74,19 +87,26 @@ app.post(
     z.object({
       name: z.string(),
       hoursTrained: z.number(),
-      owner: z.string(),
+      owner: z.string().optional(),
       dateOfBirth: z.coerce.date().optional(),
       profilePicture: z.string().optional(),
     }),
   ),
   async (c) => {
     const data = c.req.valid("json");
+    if (!data.owner) {
+      const user = c.get("user");
+      data.owner = user.id;
+    }
+
     const animal = new Animal(data);
     try {
       await animal.save();
       return c.json(animal);
     } catch (e) {
-      return c.json(e as any);
+      throw new HTTPException(500, {
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
     }
   },
 );
@@ -99,18 +119,26 @@ app.post(
       description: z.string(),
       hours: z.number(),
       animal: z.string(),
-      user: z.string(),
+      user: z.string().optional(),
       trainingLogVideo: z.string().optional(),
     }),
   ),
   async (c) => {
     const data = c.req.valid("json");
+
+    if (!data.user) {
+      const user = c.get("user");
+      data.user = user.id;
+    }
+
     const trainingLog = new TrainingLog(data);
     try {
       await trainingLog.save();
       return c.json(trainingLog);
     } catch (e) {
-      return c.json(e as any);
+      throw new HTTPException(500, {
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
     }
   },
 );
@@ -131,14 +159,12 @@ app.get("/api/admin/animals", queryLimitOffset, async (c) => {
 
 app.get("/api/admin/users", queryLimitOffset, async (c) => {
   const { count, offset } = c.req.valid("query");
-  console.log(count, offset);
+
   const users = await User.find({})
     .select("firstName lastName email profilePicture")
     .limit(count)
     .skip(offset)
     .exec();
-
-  console.log(users);
 
   return c.json(users);
 });
@@ -196,6 +222,7 @@ app.post(
       firstName: user.firstName,
       lastName: user.lastName,
       profilePicture: user.profilePicture,
+      id: user._id,
     });
 
     return c.text(token);
@@ -205,4 +232,3 @@ app.post(
 console.log("ready");
 
 export default app;
-
