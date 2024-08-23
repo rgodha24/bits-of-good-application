@@ -23,13 +23,13 @@ export default $config({
 
     const hono = new sst.aws.Function("Hono", {
       url: true,
-      handler: "index.handler",
+      handler: "src/index.handler",
       link: [bucket, mongo_uri, bucket_url],
       nodejs: {
-        install: ["@node-rs/argon2", "@node-rs/bcrypt"],
         esbuild: {
           external: ["@node-rs/argon2", "@node-rs/bcrypt"],
         },
+        install: ["@node-rs/argon2", "@node-rs/bcrypt"],
       },
     });
 

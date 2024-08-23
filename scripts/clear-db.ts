@@ -1,4 +1,10 @@
-import { connectToMongo, User, TrainingLog, Animal, disconnect } from "./db";
+import {
+  connectToMongo,
+  User,
+  TrainingLog,
+  Animal,
+  disconnect,
+} from "../src/db";
 
 await connectToMongo();
 
